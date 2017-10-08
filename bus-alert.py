@@ -1,3 +1,4 @@
+# -*- coding:  utf8 -*-
 # import required modules
 try:
     # Python 2 import
@@ -11,18 +12,18 @@ import time
 import serial
 import os
 import re
-#from pyfirmata import Arduino, util
-
-# pretty printing to console
-import pprint
-pp = pprint.PrettyPrinter(indent=4)
 
 
 DEBUGGING = os.getenv("DEBUG") or False
+if DEBUGGING:
+# pretty printing to console
+    import pprint
+    pp = pprint.PrettyPrinter(indent=4)
 
 # Serial communication
 SERIAL_PORT = "/dev/tty.usbmodemFA131"
 BAUD_RATE = 9600
+board = serial.Serial(SERIAL_PORT, BAUD_RATE)
 
 # Muoversi a Roma API
 REQUEST_INTERVAL = 10# minutes
@@ -30,21 +31,18 @@ REQUEST_INTERVAL = 10# minutes
 with open("dev_key.json") as f:
     DEV_KEY = json.load(f)["key"]
 
-# firmata config
-board = Arduino("/dev/tty.usbmodemFA131")
-
 # led opening sequence
 def opening_sequence():
-    
 
-arduino = serial.Serial(SERIAL_PORT, BAUD_RATE)
-# wait for arduino to be ready
-time.sleep(5)
-arduino.write("Starting..\n")
+    # wait for arduino to be ready
+    time.sleep(5)
+    board.write("Starting..\n")
 
     print "-"*10
     print "starting.."
     print "-"*10
+
+    ''' OLD CODE
     # s
     for i in range(3):
         board.digital[13].write(1)
@@ -63,34 +61,31 @@ arduino.write("Starting..\n")
         time.sleep(0.25)
         board.digital[13].write(0)
         time.sleep(0.25)
+    '''
 
 # LED SEQUENCES
-def init_leds():
-    board.digital[13].write(0)
-    board.digital[3].write(0)
-    board.digital[4].write(0)
+# def init_leds():
+#     board.digital[13].write(0)
+#     board.digital[3].write(0)
+#     board.digital[4].write(0)
     
-def bus_not_arriving():
-    board.digital[4].write(1)
-    board.digital[3].write(0)
+# def bus_not_arriving():
+#     board.digital[4].write(1)
+#     board.digital[3].write(0)
 
-def bus_far_away():
-    board.digital[4].write(0)
-    board.digital[3].write(0)
+# def bus_far_away():
+#     board.digital[4].write(0)
+#     board.digital[3].write(0)
     
-def bus_arriving():
-    board.digital[4].write(0)
-    board.digital[3].write(1)
-    time.sleep(0.5)
-    board.digital[3].write(0)
-    time.sleep(0.5)
-    board.digital[3].write(1)
+# def bus_arriving():
+#     board.digital[4].write(0)
+#     board.digital[3].write(1)
+#     time.sleep(0.5)
+#     board.digital[3].write(0)
+#     time.sleep(0.5)
+#     board.digital[3].write(1)
 
 def main():
-    
-    print "-"*10
-    print "starting.."
-    print "-"*10
 
     while True:
 
@@ -115,27 +110,32 @@ def main():
             if next_bus_info.has_key("annuncio"):
 
                 if next_bus_info["annuncio"] == "In Arrivo":
-                    print "86 in arrivo!"
-                    bus_arriving()
+                    #print "86 in arrivo!"
+                    board.write("86 in arrivo!\n")
+                    #bus_arriving()
                 if next_bus_info["annuncio"] == "Capolinea":
-                     bus_far_away()
+                    board.write("Capolinea")
+                    #bus_far_away()
                 else:
                     print "Prossimo autobus tra: {}".format(next_bus_info["annuncio"])
                     try:
                         minutes = int(re.findall(r"(\d+)'", next_bus_info["annuncio"])[0].replace("'", ""))
                         #print "minutes: {}".format(minutes)
                         if minutes > 10:
-                            bus_far_away()
-                        elif minutes < 10:
-                            bus_arriving()
+                            board.write("Away. {} minutes!\n".format(minutes))
+                            #bus_far_away()
+                        elif minutes <= 10:
+                            board.write("Near. {} minutes!\n".format(minutes))
+                            #bus_arriving()
                     except IndexError:
                         pass
             else:
                 print "Nessun autobus disponibile"
-                bus_not_arriving()
+                board.write("Nessun autobus disponibile\n")
+                #bus_not_arriving()
         
         time.sleep(REQUEST_INTERVAL)
 
 if __name__ == "__main__":
-    #opening_sequence()
+    opening_sequence()
     main()
