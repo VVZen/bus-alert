@@ -22,8 +22,11 @@
 // with the arduino pin number it is connected to
 const int rs = 12, en = 11, d4 = 5, d5 = 4, d6 = 3, d7 = 2;
 LiquidCrystal lcd(rs, en, d4, d5, d6, d7);
+const int RED_LED = 7, BLUE_LED = 8;
 
 String incoming_message = "";
+
+bool arrival_state = false;
 
 void setup() {
 
@@ -31,19 +34,53 @@ void setup() {
   
   // set up the LCD's number of columns and rows:
   lcd.begin(16, 2);
+  // set up the leds
+  pinMode(RED_LED, OUTPUT);
+  pinMode(BLUE_LED, OUTPUT);
   // startup
   Serial.println("READY");
   Serial.flush();
+}
+
+void bus_arriving_sequence(bool arrivalState){
+  if (arrivalState){
+    for (int i = 0; i < 3; i++){
+      delay(300);
+      digitalWrite(BLUE_LED, HIGH);
+      delay(300);
+      digitalWrite(BLUE_LED, LOW);
+    }
+  }
+  else {
+    digitalWrite(RED_LED, LOW);
+  }
 }
 
 void loop() {
   
   // set the cursor to column 0, line 1
   lcd.setCursor(0, 1);
+
+  bus_arriving_sequence(arrival_state);
   
   // receive messages from serial and print them to lcd
   while (Serial.available() > 0){
-    incoming_message += char(Serial.read());
+    char current_char = char(Serial.read());
+    incoming_message += current_char;
+
+    if (current_char == '#'){
+      arrival_state = false;
+      incoming_message = "";
+    }
+    else if (current_char == '^'){
+      arrival_state = true;
+      incoming_message = "";
+    }
+    else if (current_char == '-'){
+      arrival_state = false;
+      incoming_message = "";
+      digitalWrite(RED_LED, LOW);
+    }
     
     if (incoming_message.indexOf("\n") > 0){
       lcd.clear();

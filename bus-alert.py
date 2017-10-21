@@ -42,6 +42,8 @@ def opening_sequence():
     print "starting.."
     print "-"*10
 
+    board.write('^')
+
     ''' OLD CODE
     # s
     for i in range(3):
@@ -88,52 +90,70 @@ def opening_sequence():
 def main():
 
     while True:
+        result = None
+        try:
+            # connection and authentication
+            s1 = Server('http://muovi.roma.it/ws/xml/autenticazione/1')
+            s2 = Server('http://muovi.roma.it/ws/xml/paline/7')
+            token = s1.autenticazione.Accedi(DEV_KEY, "")
+            result = s2.paline.Previsioni(token, "73030", "it")
+        except Exception, e:
+            print "exception: {}".format(e)
+            print "Internet connection error, skipping request"
+            board.write("-")
+            board.write("Internet offline\n")
 
-        # connection and authentication
-        s1 = Server('http://muovi.roma.it/ws/xml/autenticazione/1')
-        s2 = Server('http://muovi.roma.it/ws/xml/paline/7')
-        token = s1.autenticazione.Accedi(DEV_KEY, "")
-        result = s2.paline.Previsioni(token, "73030", "it")
+        if result is not None:
+            primi_arrivi = result["risposta"]["primi_per_palina"]
+            if len(primi_arrivi) > 0:
+                palina_info = primi_arrivi[0]["arrivi"][0]
+                next_bus_info = primi_arrivi[0]["arrivi"][1]
+                
+                if DEBUGGING:
+                    print "Info palina: "
+                    pp.pprint(palina_info)
+                    print "Prossimo autobus:"
+                    pp.pprint(next_bus_info)
+                
+                # check status of bus
+                if next_bus_info.has_key("annuncio"):
 
-        primi_arrivi = result["risposta"]["primi_per_palina"]
-        if len(primi_arrivi) > 0:
-            palina_info = primi_arrivi[0]["arrivi"][0]
-            next_bus_info = primi_arrivi[0]["arrivi"][1]
-            
-            if DEBUGGING:
-                print "Info palina: "
-                pp.pprint(palina_info)
-                print "Prossimo autobus:"
-                pp.pprint(next_bus_info)
-            
-            # check status of bus
-            if next_bus_info.has_key("annuncio"):
-
-                if next_bus_info["annuncio"] == "In Arrivo":
-                    #print "86 in arrivo!"
-                    board.write("86 in arrivo!\n")
-                    #bus_arriving()
-                if next_bus_info["annuncio"] == "Capolinea":
-                    board.write("Capolinea")
-                    #bus_far_away()
+                    if next_bus_info["annuncio"] == "In Arrivo":
+                        #print "86 in arrivo!"
+			board.write("^")
+                        board.write("86 in arrivo!\n")
+                        #bus_arriving()
+                    if next_bus_info["annuncio"] == "Capolinea":
+                        board.write("Capolinea")
+                        #bus_far_away()
+                    else:
+                        print "Prossimo autobus tra: {}".format(next_bus_info["annuncio"])
+                        try:
+                            minutes = int(re.findall(r"(\d+)'", next_bus_info["annuncio"])[0].replace("'", ""))
+                            minutes -= 5 # since I'm always late!
+                #print "minutes: {}".format(minutes)
+                            if minutes > 10:
+                                board.write("#")
+                                board.write("Away. {} minutes!\n".format(minutes))
+                                #bus_far_away()
+                            elif minutes <= 10:
+                                if minutes > 0:
+                                    #board.write("^")
+                                    board.write("Near. {} minutes!\n".format(minutes))
+                                #bus_arriving()
+                                else:
+                                    board.write("Just passed!")
+                            
+                        except IndexError:
+                            pass
                 else:
-                    print "Prossimo autobus tra: {}".format(next_bus_info["annuncio"])
-                    try:
-                        minutes = int(re.findall(r"(\d+)'", next_bus_info["annuncio"])[0].replace("'", ""))
-                        #print "minutes: {}".format(minutes)
-                        if minutes > 10:
-                            board.write("Away. {} minutes!\n".format(minutes))
-                            #bus_far_away()
-                        elif minutes <= 10:
-                            board.write("Near. {} minutes!\n".format(minutes))
-                            #bus_arriving()
-                    except IndexError:
-                        pass
-            else:
-                print "Nessun autobus disponibile"
-                board.write("Nessun autobus disponibile\n")
-                #bus_not_arriving()
-        
+                    print "Nessun autobus disponibile"
+                    board.write("#")
+                    board.write("No bus available\n")
+                    #bus_not_arriving()
+        else:
+            board.write("-")
+            board.write("Internet offline\n")
         time.sleep(REQUEST_INTERVAL)
 
 if __name__ == "__main__":
