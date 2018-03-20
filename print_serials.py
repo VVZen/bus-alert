@@ -1,13 +1,8 @@
+# -*- coding:  utf8 -*-
 import time
 import serial
-
-SERIAL_PORT = "/dev/tty.usbmodemFA131"
-BAUD_RATE = 9600
-
-arduino = serial.Serial(SERIAL_PORT, BAUD_RATE)
-# wait for arduino to be ready
-time.sleep(5)
-arduino.write("Starting..\n")
+import sys
+import glob
 
 def list_serial_ports():
     '''
@@ -34,3 +29,6 @@ def list_serial_ports():
         except (OSError, serial.SerialException):
             pass
     print "Serial ports available:\n\t{}".format("\n\t".join(result))
+
+if __name__ == "__main__":
+    list_serial_ports()
